@@ -1,6 +1,8 @@
 # Azure Pipelines for cross-platform parity (Linux, Windows, macOS)
+# This yaml is used exclusively by the "metabolic-ledger-full-ci" pipeline (id=5) in the "CI CD" project.
 # Matches GH CI + Docker build. Uses matrix as per review/plan.
 # See #7 for full trifecta context. Validated structure for Azure YAML.
+# (Legacy "metabolic-ledger-ci" id=4 duplicate definition removed to prevent double runs / "two rounds".)
 
 trigger:
   - main
