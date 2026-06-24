@@ -28,7 +28,7 @@ impl MarketPrices {
 /// to read canonical summaries without duplicating state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortfolioSummary {
-    /// Total realized PnL across assets (synced with `cumulative_pnl`).
+    /// Total realized PnL across assets (computed from the per-asset `realized_pnls` ledger).
     pub total_realized_pnl: f32,
     /// Realized PnL broken down per asset.
     pub realized_pnl_per_asset: HashMap<String, f32>,
@@ -194,7 +194,7 @@ impl GhostWallet {
     /// Win-rate also computable from trade log by counting positive realized_pnl_usdt on sells.
     pub fn summary(&self) -> PortfolioSummary {
         PortfolioSummary {
-            total_realized_pnl: self.cumulative_pnl,
+            total_realized_pnl: self.realized_pnls.values().sum(),
             realized_pnl_per_asset: self.realized_pnls.clone(),
             win_rate: self.win_rate(),
             trade_count: self.trade_count,
