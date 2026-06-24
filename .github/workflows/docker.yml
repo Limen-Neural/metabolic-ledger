@@ -23,11 +23,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      # Determine Docker Hub login eligibility at runtime (no secrets. in any if: expression to satisfy CR/zizmor scanners).
+      # Determine Docker Hub login eligibility at runtime (no secrets. in any if: expression to satisfy CR/zizmor scanners; secrets passed via env: and referenced as $VAR in shell to avoid direct interpolation risk per Devin).
       - name: Check Docker Hub credentials available
         id: dockerhub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
-          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "${{ secrets.DOCKER_USERNAME }}" ] && [ -n "${{ secrets.DOCKER_PASSWORD }}" ]; then
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
             echo "do_login=true" >> "$GITHUB_OUTPUT"
           else
             echo "do_login=false" >> "$GITHUB_OUTPUT"
