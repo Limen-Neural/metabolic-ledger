@@ -15,8 +15,8 @@ COPY Cargo.toml Cargo.lock* ./
 COPY src ./src
 
 # Build release with features (as in --all-features in CI)
-ARG FEATURES
-RUN cargo build --release --features ${FEATURES}
+ARG FEATURES=""
+RUN if [ -n "${FEATURES}" ]; then cargo build --release --features "${FEATURES}"; else cargo build --release; fi
 
 # For library crate with no binary, single-stage build is cleaner and more efficient for CI verification (avoids bloating final image with full target/release artifacts like .rmeta/.o as noted in reviews). Build success verifies the lib + features.
 # Run as non-root for security.
