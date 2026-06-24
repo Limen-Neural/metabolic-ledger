@@ -46,7 +46,7 @@ pub mod log;
 pub mod wallet;
 
 /// Re-export of primary engine constants and execution functions for convenience.
-pub use engine::{execute_buy, execute_sell, CELLULAR_ATP, ENERGY_COMMITMENT, METABOLIC_COST};
+pub use engine::{CELLULAR_ATP, ENERGY_COMMITMENT, METABOLIC_COST, execute_buy, execute_sell};
 /// Re-export of the trade log record type.
 pub use log::GhostTradeLog;
 /// Re-export of wallet types for the public API (including `PortfolioSummary` for

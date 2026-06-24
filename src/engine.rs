@@ -6,7 +6,7 @@
 
 //! Ghost trade execution engine.
 
-use crate::log::{append_ghost_log, GhostTradeLog};
+use crate::log::{GhostTradeLog, append_ghost_log};
 use crate::wallet::GhostWallet;
 
 /// Initial biological energy currency (quote units).

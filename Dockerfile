@@ -27,4 +27,4 @@ USER appuser
 
 # Since no [[bin]], the "run" is verification that build succeeded.
 # Users of the lib would cargo add the crate from git/crates.
-CMD ["echo", "metabolic-ledger lib built successfully (with sentry feature)"]
+CMD ["echo", "metabolic-ledger lib built successfully"]
