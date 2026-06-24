@@ -1,3 +1,8 @@
+// Copyright 2025 Limen-Neural
+//
+// Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+//
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use serde::Serialize;
 use std::io::Write as _;

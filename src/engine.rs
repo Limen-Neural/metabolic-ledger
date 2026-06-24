@@ -1,6 +1,12 @@
+// Copyright 2025 Limen-Neural
+//
+// Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+//
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 //! Ghost trade execution engine.
 
-use crate::log::{append_ghost_log, GhostTradeLog};
+use crate::log::{GhostTradeLog, append_ghost_log};
 use crate::wallet::GhostWallet;
 
 /// Initial biological energy currency (quote units).
@@ -133,7 +139,10 @@ mod tests {
         wallet.entry_prices.insert("ASSET_A".to_string(), 0.02);
         let before = wallet.balance_atp;
         execute_sell(&mut wallet, "ASSET_A", 0.05, 1, "test", None);
-        assert!(wallet.balance_atp > before, "sell at profit should increase ATP");
+        assert!(
+            wallet.balance_atp > before,
+            "sell at profit should increase ATP"
+        );
     }
 
     #[test]

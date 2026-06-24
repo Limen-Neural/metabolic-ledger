@@ -1,3 +1,9 @@
+// Copyright 2025 Limen-Neural
+//
+// Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+//
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
 //! Ghost wallet — multi-asset virtual portfolio with Kelly position sizing.
 
 use crate::engine::{CELLULAR_ATP, ENERGY_COMMITMENT};
@@ -11,6 +17,7 @@ pub struct MarketPrices {
 }
 
 impl MarketPrices {
+    /// Get the price for a named asset in USD, returning 0.0 if unknown.
     pub fn get(&self, asset: &str) -> f32 {
         *self.prices.get(asset).unwrap_or(&0.0)
     }
@@ -18,18 +25,23 @@ impl MarketPrices {
 
 /// Virtual ghost-trading wallet with biological ATP energy model.
 pub struct GhostWallet {
-    // ── ATP base (cellular ATP) ────────────────────────────────────────
+    /// ── ATP base (cellular ATP) ────────────────────────────────────────
+    /// Initial and current cellular ATP balance (quote units).
     pub balance_atp: f32,
 
-    // ── Token positions ───────────────────────────────────────────────────
+    /// ── Token positions ───────────────────────────────────────────────────
+    /// Current holdings per asset.
     pub balances: HashMap<String, f32>,
+    /// Entry (weighted average) price per asset for realized PnL calc.
     pub entry_prices: HashMap<String, f32>,
 
-    // ── Performance tracking ──────────────────────────────────────────────
+    /// ── Performance tracking ──────────────────────────────────────────────
+    /// Cumulative realized PnL across all closed trades.
     pub cumulative_pnl: f32,
+    /// Total number of trades executed.
     pub trade_count: u64,
 
-    // ── Kelly criterion state ─────────────────────────────────────────────
+    /// ── Kelly criterion state ─────────────────────────────────────────────
     pub win_count: u64,
     pub loss_count: u64,
     pub total_win: f32,
