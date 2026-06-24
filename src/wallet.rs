@@ -188,7 +188,7 @@ impl GhostWallet {
     /// Satisfies AC for #3: centralizes accounting so consumers read from one place.
     /// Win-rate also computable from trade log by counting positive realized_pnl_usdt on sells.
     pub fn summary(&self) -> PortfolioSummary {
-        let total: f32 = self.realized_pnls.values().sum();
+        let total: f32 = self.cumulative_pnl;
         PortfolioSummary {
             total_realized_pnl: total, // computed from per-asset ledger for consistency
             realized_pnl_per_asset: self.realized_pnls.clone(),
