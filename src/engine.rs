@@ -6,7 +6,7 @@
 
 //! Ghost trade execution engine.
 
-use crate::log::{GhostTradeLog, append_ghost_log};
+use crate::log::{append_ghost_log, GhostTradeLog};
 use crate::wallet::GhostWallet;
 
 /// Initial biological energy currency (quote units).
@@ -93,11 +93,11 @@ pub fn execute_sell(
     wallet.balance_atp += net_proceeds;
     wallet.cumulative_pnl += pnl;
     wallet.trade_count += 1;
-    wallet
-        .realized_pnls
-        .entry(asset.to_string())
-        .and_modify(|p| *p += pnl)
-        .or_insert(pnl);
+    if let Some(p) = wallet.realized_pnls.get_mut(asset) {
+        *p += pnl;
+    } else {
+        wallet.realized_pnls.insert(asset.to_string(), pnl);
+    }
     wallet.record_pnl_and_update_kelly(pnl);
 
     let record = GhostTradeLog {

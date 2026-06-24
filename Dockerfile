@@ -18,13 +18,8 @@ COPY src ./src
 ARG FEATURES
 RUN cargo build --release --features ${FEATURES}
 
-# Final stage (minimal; since lib, mainly for build artifact presence)
-FROM debian:bookworm-slim
-
-WORKDIR /app
-
-# Copy built artifacts (lib, rmeta etc for verification)
-COPY --from=builder /usr/src/metabolic-ledger/target/release /app/release-artifacts
+# For library crate with no binary, single-stage build is cleaner and more efficient for CI verification (avoids bloating final image with full target/release artifacts like .rmeta/.o as noted in reviews). Build success verifies the lib + features.
+# Run as non-root for security.
 
 # Run as non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser

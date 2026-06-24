@@ -32,11 +32,13 @@ pub struct PortfolioSummary {
     pub total_realized_pnl: f32,
     /// Realized PnL broken down per asset.
     pub realized_pnl_per_asset: HashMap<String, f32>,
-    /// Win rate (`winning trades / total trades`); `None` if no closed trades.
+    /// Win rate (`winning trades / total closed trades`); `None` if no closed trades.
     /// Also computable from `GhostTradeLog` by counting positive `realized_pnl_usdt` on sell actions.
     pub win_rate: Option<f64>,
-    /// Total actions executed (both buys and sells).
-    pub action_count: u64,
+    /// Total trade actions executed (buys and sells).
+    pub trade_count: u64,
+    /// Total closed trades (sells only, denominator for win_rate).
+    pub closed_trade_count: u64,
 }
 
 /// Virtual ghost-trading wallet with biological ATP energy model.
@@ -191,7 +193,8 @@ impl GhostWallet {
             total_realized_pnl: total, // computed from per-asset ledger for consistency
             realized_pnl_per_asset: self.realized_pnls.clone(),
             win_rate: self.win_rate(),
-            action_count: self.trade_count,
+            trade_count: self.trade_count,
+            closed_trade_count: self.win_count + self.loss_count,
         }
     }
 }

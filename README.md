@@ -71,7 +71,7 @@ println!("ASSET_A units: {:.2}", wallet.balance("ASSET_A"));
 
 ```rust
 execute_buy(&mut wallet, "ASSET_A", 65.0, 1, "snn_fire", Some("trades.jsonl"));
-// Appends: {"ts":"2024-...","asset":"ASSET_A","side":"BUY","price":65.0,...}
+// Appends: {"ts":"2024-...","asset":"ASSET_A","action":"buy","price":65.0,"quantity":...,...}
 ```
 
 ## Energy Model
