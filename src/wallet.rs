@@ -25,18 +25,23 @@ impl MarketPrices {
 
 /// Virtual ghost-trading wallet with biological ATP energy model.
 pub struct GhostWallet {
-    // ── ATP base (cellular ATP) ────────────────────────────────────────
+    /// ── ATP base (cellular ATP) ────────────────────────────────────────
+    /// Initial and current cellular ATP balance (quote units).
     pub balance_atp: f32,
 
-    // ── Token positions ───────────────────────────────────────────────────
+    /// ── Token positions ───────────────────────────────────────────────────
+    /// Current holdings per asset.
     pub balances: HashMap<String, f32>,
+    /// Entry (weighted average) price per asset for realized PnL calc.
     pub entry_prices: HashMap<String, f32>,
 
-    // ── Performance tracking ──────────────────────────────────────────────
+    /// ── Performance tracking ──────────────────────────────────────────────
+    /// Cumulative realized PnL across all closed trades.
     pub cumulative_pnl: f32,
+    /// Total number of trades executed.
     pub trade_count: u64,
 
-    // ── Kelly criterion state ─────────────────────────────────────────────
+    /// ── Kelly criterion state ─────────────────────────────────────────────
     pub win_count: u64,
     pub loss_count: u64,
     pub total_win: f32,
