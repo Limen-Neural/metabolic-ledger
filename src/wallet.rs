@@ -17,6 +17,7 @@ pub struct MarketPrices {
 }
 
 impl MarketPrices {
+    /// Get the price for a named asset in USD, returning 0.0 if unknown.
     pub fn get(&self, asset: &str) -> f32 {
         *self.prices.get(asset).unwrap_or(&0.0)
     }

@@ -35,10 +35,18 @@
 //! - Alberts, B. et al. (2002). *Molecular Biology of the Cell* (4th ed.).
 //!   ATP as cellular energy currency — conceptual basis for CELLULAR_ATP metaphor.
 
+/// Ghost trade execution engine with buy/sell logic and metabolic constants.
 pub mod engine;
+
+/// Trade log record type and JSONL append helper.
 pub mod log;
+
+/// Virtual wallet with ATP balance, positions, and adaptive Kelly sizing.
 pub mod wallet;
 
+/// Re-export of primary engine constants and execution functions for convenience.
 pub use engine::{CELLULAR_ATP, ENERGY_COMMITMENT, METABOLIC_COST, execute_buy, execute_sell};
+/// Re-export of the trade log record type.
 pub use log::GhostTradeLog;
+/// Re-export of wallet types for the public API.
 pub use wallet::{GhostWallet, MarketPrices};
