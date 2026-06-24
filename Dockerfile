@@ -7,7 +7,10 @@ FROM rust:1.88-bookworm
 WORKDIR /usr/src/metabolic-ledger
 
 # System deps for native crates (openssl, sentry etc.)
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    "pkg-config=1.8.1-1" \
+    "libssl-dev=3.0.*" \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests first for better caching
 COPY Cargo.toml Cargo.lock* ./
