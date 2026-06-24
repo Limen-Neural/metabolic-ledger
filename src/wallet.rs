@@ -150,12 +150,14 @@ impl GhostWallet {
             self.total_loss += pnl.abs();
         }
 
-        let closed = self.closed_trade_count;
-        if closed < 10 {
+        // Kelly needs probabilities among decisive trades only (p + q = 1);
+        // break-even trades must be excluded so `q` is not inflated.
+        let decisive = self.win_count + self.loss_count;
+        if decisive < 10 {
             return;
         } // need minimum sample
 
-        let win_rate = self.win_count as f64 / closed as f64;
+        let win_rate = self.win_count as f64 / decisive as f64;
         let avg_win = if self.win_count > 0 {
             self.total_win as f64 / self.win_count as f64
         } else {

@@ -1,8 +1,8 @@
-# Multi-stage Dockerfile for metabolic-ledger (Rust lib crate)
+# Dockerfile for metabolic-ledger (Rust lib crate)
 # Used for Docker build verification in CI and local docker cli tests.
 # Supports optional sentry feature.
 
-FROM rust:1.88-bookworm AS builder
+FROM rust:1.88-bookworm
 
 WORKDIR /usr/src/metabolic-ledger
 
