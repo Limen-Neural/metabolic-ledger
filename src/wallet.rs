@@ -35,8 +35,8 @@ pub struct PortfolioSummary {
     /// Win rate (`winning trades / total trades`); `None` if no closed trades.
     /// Also computable from `GhostTradeLog` by counting positive `realized_pnl_usdt` on sell actions.
     pub win_rate: Option<f64>,
-    /// Total trades executed.
-    pub trade_count: u64,
+    /// Total actions executed (both buys and sells).
+    pub action_count: u64,
 }
 
 /// Virtual ghost-trading wallet with biological ATP energy model.
@@ -186,12 +186,12 @@ impl GhostWallet {
     /// Satisfies AC for #3: centralizes accounting so consumers read from one place.
     /// Win-rate also computable from trade log by counting positive realized_pnl_usdt on sells.
     pub fn summary(&self) -> PortfolioSummary {
-        // let _total: f32 = self.realized_pnls.values().sum(); // available if needed instead of cumulative
+        let total: f32 = self.realized_pnls.values().sum();
         PortfolioSummary {
-            total_realized_pnl: self.cumulative_pnl, // sync with existing global for consistency
+            total_realized_pnl: total, // computed from per-asset ledger for consistency
             realized_pnl_per_asset: self.realized_pnls.clone(),
             win_rate: self.win_rate(),
-            trade_count: self.trade_count,
+            action_count: self.trade_count,
         }
     }
 }

@@ -10,12 +10,13 @@ WORKDIR /usr/src/metabolic-ledger
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests first for better caching
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock* ./
 # For lib, we can cargo fetch or just copy src
 COPY src ./src
 
 # Build release with features (as in --all-features in CI)
-RUN cargo build --release --features sentry
+ARG FEATURES
+RUN cargo build --release --features ${FEATURES}
 
 # Final stage (minimal; since lib, mainly for build artifact presence)
 FROM debian:bookworm-slim
@@ -24,6 +25,10 @@ WORKDIR /app
 
 # Copy built artifacts (lib, rmeta etc for verification)
 COPY --from=builder /usr/src/metabolic-ledger/target/release /app/release-artifacts
+
+# Run as non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+USER appuser
 
 # Since no [[bin]], the "run" is verification that build succeeded.
 # Users of the lib would cargo add the crate from git/crates.
