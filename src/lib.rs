@@ -52,4 +52,6 @@ pub use log::GhostTradeLog;
 pub use wallet::{GhostWallet, MarketPrices};
 
 #[cfg(feature = "sentry")]
+/// Re-export of the `sentry` crate (when the `sentry` feature is enabled) for
+/// error monitoring, tracing, and panic integration in consuming applications.
 pub use sentry;
