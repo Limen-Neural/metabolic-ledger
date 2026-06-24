@@ -90,6 +90,43 @@ Extracted from Eagle-Lander, the author's own private neuromorphic GPU superviso
 repository (closed-source). Ghost-traded generalized multi-asset portfolios in
 production alongside the live SNN supervisor.
 
+## Optional Sentry Integration (error monitoring)
+
+This crate supports optional integration with [Sentry](https://sentry.io) for error tracking, panics, and performance monitoring in consuming applications.
+
+Enable via feature flag (uses the official `sentry` Rust crate):
+
+```toml
+[dependencies]
+metabolic-ledger = { git = "...", features = ["sentry"] }
+# or from crates.io once published
+# metabolic-ledger = { version = "0.1", features = ["sentry"] }
+```
+
+In your application entrypoint (binary), initialize Sentry **once**:
+
+```rust
+#[cfg(feature = "sentry")]
+let _guard = sentry::init((
+    "https://<YOUR_DSN>@sentry.io/<PROJECT_ID>",
+    sentry::ClientOptions {
+        release: sentry::release_name!(),
+        environment: Some("production".into()),
+        // Add more integrations: backtraces, contexts, etc. as needed
+        ..Default::default()
+    },
+));
+```
+
+The feature pulls in `sentry` as an optional dependency. See the [sentry-rust docs](https://docs.rs/sentry) for full configuration (tracing, custom events, etc.).
+
+When the `sentry` feature is enabled, you can also access the re-export:
+
+```rust
+#[cfg(feature = "sentry")]
+use metabolic_ledger::sentry; // if exposed
+```
+
 ## License
 
 MIT OR Apache-2.0

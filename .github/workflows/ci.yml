@@ -23,3 +23,18 @@ jobs:
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo build --all-features
       - run: cargo test --all-features
+
+  security:
+    name: Snyk Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@master
+      - name: Run Snyk Open Source (SCA) test
+        run: snyk test --file=Cargo.toml --severity-threshold=high || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Snyk Code (SAST) test
+        run: snyk code test --severity-threshold=high || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
