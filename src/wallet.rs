@@ -28,8 +28,6 @@ impl MarketPrices {
 /// to read canonical summaries without duplicating state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortfolioSummary {
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioSummary {
     /// Total realized PnL across assets (synced with `cumulative_pnl`).
     pub total_realized_pnl: f32,
     /// Realized PnL broken down per asset.
@@ -68,6 +66,8 @@ pub struct GhostWallet {
     pub loss_count: u64,
     pub total_win: f32,
     pub total_loss: f32,
+    /// Total closed trades (including break-even), incremented on every sell.
+    pub closed_trade_count: u64,
     /// Adaptive trade fraction, initialized to `ENERGY_COMMITMENT`.
     pub trade_fraction: f32,
     pub price_history: VecDeque<f32>,
@@ -87,6 +87,7 @@ impl GhostWallet {
             loss_count: 0,
             total_win: 0.0,
             total_loss: 0.0,
+            closed_trade_count: 0,
             trade_fraction: ENERGY_COMMITMENT,
             price_history: VecDeque::with_capacity(50),
         }
@@ -140,6 +141,7 @@ impl GhostWallet {
 
     /// Record closed trade PnL and update Kelly fraction.
     pub fn record_pnl_and_update_kelly(&mut self, pnl: f32) {
+        self.closed_trade_count += 1;
         if pnl > 0.0 {
             self.win_count += 1;
             self.total_win += pnl;
@@ -148,7 +150,7 @@ impl GhostWallet {
             self.total_loss += pnl.abs();
         }
 
-        let closed = self.win_count + self.loss_count;
+        let closed = self.closed_trade_count;
         if closed < 10 {
             return;
         } // need minimum sample
@@ -178,11 +180,10 @@ impl GhostWallet {
 
     /// Win rate from closed trades (returns `None` if no trades).
     pub fn win_rate(&self) -> Option<f64> {
-        let closed = self.win_count + self.loss_count;
-        if closed == 0 {
+        if self.closed_trade_count == 0 {
             None
         } else {
-            Some(self.win_count as f64 / closed as f64)
+            Some(self.win_count as f64 / self.closed_trade_count as f64)
         }
     }
 
@@ -190,13 +191,12 @@ impl GhostWallet {
     /// Satisfies AC for #3: centralizes accounting so consumers read from one place.
     /// Win-rate also computable from trade log by counting positive realized_pnl_usdt on sells.
     pub fn summary(&self) -> PortfolioSummary {
-    pub fn summary(&self) -> PortfolioSummary {
         PortfolioSummary {
             total_realized_pnl: self.cumulative_pnl,
             realized_pnl_per_asset: self.realized_pnls.clone(),
             win_rate: self.win_rate(),
             trade_count: self.trade_count,
-            closed_trade_count: self.win_count + self.loss_count,
+            closed_trade_count: self.closed_trade_count,
         }
     }
 }

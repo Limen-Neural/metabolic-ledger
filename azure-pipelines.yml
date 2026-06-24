@@ -32,7 +32,7 @@ jobs:
       rustc --version
       cargo --version
       cargo fmt -- --check
-      cargo clippy --all-targets --all-features -- -D warnings || echo "clippy warnings allowed in this demo"
+      cargo clippy --all-targets --all-features -- -D warnings
       cargo build --all-features
       cargo test --all-features
     displayName: 'Cargo checks with --all-features (all platforms)'
