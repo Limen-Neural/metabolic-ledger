@@ -1,0 +1,61 @@
+# Azure Pipelines for cross-platform parity (Linux, Windows, macOS)
+# Matches GH CI + Docker build. Uses matrix as per review.
+# See #7 for full trifecta context.
+
+trigger:
+  - main
+pr:
+  - main
+
+variables:
+  FEATURES: "sentry"  # for --features in cargo
+
+strategy:
+  matrix:
+    linux:
+      imageName: 'ubuntu-latest'
+    windows:
+      imageName: 'windows-latest'
+    mac:
+      imageName: 'macos-latest'
+
+pool:
+  vmImage: $(imageName)
+
+steps:
+- checkout: self
+
+- task: UseRust@1  # or script for rustup (works cross platform)
+  inputs:
+    versionSpec: '1.80'  # stable-ish
+    # For full: use script below for consistency with GH pinned
+
+- script: |
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    echo "##vso[task.prependpath]$HOME/.cargo/bin"
+  displayName: 'Install Rust (cross platform fallback)'
+  condition: ne(variables['Agent.OS'], 'Windows_NT')
+
+- script: |
+    choco install rustup --yes
+    rustup default stable
+  displayName: 'Install Rust on Windows'
+  condition: eq(variables['Agent.OS'], 'Windows_NT')
+
+- script: |
+    rustc --version
+    cargo --version
+    cargo fmt -- --check
+    cargo clippy --all-targets --all-features -- -D warnings
+    cargo build --all-features
+    cargo test --all-features
+  displayName: 'Cargo checks with --all-features (all platforms)'
+
+- script: |
+    docker build -t metabolic-ledger-azure .
+  displayName: 'Docker build test (Linux only)'
+  condition: eq(variables['Agent.OS'], 'Linux')
+
+- script: |
+    echo "Azure pipeline succeeded for $(imageName). See #3 for accounting, #7 for CI."
+  displayName: 'Summary'

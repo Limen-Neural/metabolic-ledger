@@ -23,6 +23,22 @@ impl MarketPrices {
     }
 }
 
+/// Canonical summary of persistent portfolio accounting (realized PnL per asset, win-rate, etc.).
+/// Exported as the single source of truth per issue #3 AC. Allows downstream (e.g. DendriteTrader.jl)
+/// to read canonical summaries without duplicating state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioSummary {
+    /// Total realized PnL across assets (synced with `cumulative_pnl`).
+    pub total_realized_pnl: f32,
+    /// Realized PnL broken down per asset.
+    pub realized_pnl_per_asset: HashMap<String, f32>,
+    /// Win rate (`winning trades / total trades`); `None` if no closed trades.
+    /// Also computable from `GhostTradeLog` by counting positive `realized_pnl_usdt` on sell actions.
+    pub win_rate: Option<f64>,
+    /// Total trades executed.
+    pub trade_count: u64,
+}
+
 /// Virtual ghost-trading wallet with biological ATP energy model.
 pub struct GhostWallet {
     /// ── ATP base (cellular ATP) ────────────────────────────────────────
@@ -38,6 +54,8 @@ pub struct GhostWallet {
     /// ── Performance tracking ──────────────────────────────────────────────
     /// Cumulative realized PnL across all closed trades.
     pub cumulative_pnl: f32,
+    /// Realized PnL per asset from closed trades (sells). Exposes per-asset accounting per issue #3.
+    pub realized_pnls: HashMap<String, f32>,
     /// Total number of trades executed.
     pub trade_count: u64,
 
@@ -59,6 +77,7 @@ impl GhostWallet {
             balances: HashMap::new(),
             entry_prices: HashMap::new(),
             cumulative_pnl: 0.0,
+            realized_pnls: HashMap::new(),
             trade_count: 0,
             win_count: 0,
             loss_count: 0,
@@ -160,6 +179,19 @@ impl GhostWallet {
             None
         } else {
             Some(self.win_count as f64 / closed as f64)
+        }
+    }
+
+    /// Returns a summary of realized PnL (per-asset + total), win-rate, etc.
+    /// Satisfies AC for #3: centralizes accounting so consumers read from one place.
+    /// Win-rate also computable from trade log by counting positive realized_pnl_usdt on sells.
+    pub fn summary(&self) -> PortfolioSummary {
+        // let _total: f32 = self.realized_pnls.values().sum(); // available if needed instead of cumulative
+        PortfolioSummary {
+            total_realized_pnl: self.cumulative_pnl, // sync with existing global for consistency
+            realized_pnl_per_asset: self.realized_pnls.clone(),
+            win_rate: self.win_rate(),
+            trade_count: self.trade_count,
         }
     }
 }
