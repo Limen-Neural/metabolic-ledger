@@ -6,7 +6,7 @@
 <p align="center">Bio-inspired ghost trading engine with ATP cellular energy metaphors</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-GPL--3.0-orange" alt="GPL-3.0">
+  <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-blue" alt="MIT/Apache-2.0">
 </p>
 
 ---
@@ -92,4 +92,4 @@ production alongside the live SNN supervisor.
 
 ## License
 
-GPL-3.0-or-later
+MIT OR Apache-2.0

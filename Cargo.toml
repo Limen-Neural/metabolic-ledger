@@ -2,7 +2,7 @@
 name = "metabolic-ledger"
 version = "0.1.0"
 edition = "2024"
-license = "GPL-3.0-or-later"
+license = "MIT OR Apache-2.0"
 description = "Bio-inspired simulation ledger: ATP cellular energy metaphors, adaptive Kelly energy commitment, and metabolic cost tracking for multi-asset SNN portfolios."
 repository = "https://github.com/Limen-Neural/metabolic-ledger"
 keywords = ["trading", "snn", "neuromorphic", "backtesting", "portfolio"]
