@@ -28,6 +28,8 @@ impl MarketPrices {
 /// to read canonical summaries without duplicating state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortfolioSummary {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioSummary {
     /// Total realized PnL across assets (synced with `cumulative_pnl`).
     pub total_realized_pnl: f32,
     /// Realized PnL broken down per asset.
@@ -37,7 +39,7 @@ pub struct PortfolioSummary {
     pub win_rate: Option<f64>,
     /// Total trade actions executed (buys and sells).
     pub trade_count: u64,
-    /// Total closed trades (sells only, denominator for win_rate).
+    /// Total closed trades (sells).
     pub closed_trade_count: u64,
 }
 
