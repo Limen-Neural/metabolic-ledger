@@ -93,6 +93,11 @@ pub fn execute_sell(
     wallet.balance_atp += net_proceeds;
     wallet.cumulative_pnl += pnl;
     wallet.trade_count += 1;
+    if let Some(p) = wallet.realized_pnls.get_mut(asset) {
+        *p += pnl;
+    } else {
+        wallet.realized_pnls.insert(asset.to_string(), pnl);
+    }
     wallet.record_pnl_and_update_kelly(pnl);
 
     let record = GhostTradeLog {
@@ -163,5 +168,46 @@ mod tests {
         ]);
         let value = wallet.portfolio_value(&prices);
         assert_eq!(value, wallet.balance_atp);
+    }
+
+    #[test]
+    fn test_realized_pnl_per_asset() {
+        let mut wallet = GhostWallet::new();
+        wallet.balances.insert("ASSET_A".to_string(), 1_000.0);
+        wallet.entry_prices.insert("ASSET_A".to_string(), 0.02);
+        execute_sell(&mut wallet, "ASSET_A", 0.05, 1, "test", None);
+        let summary = wallet.summary();
+        let pnl = summary
+            .realized_pnl_per_asset
+            .get("ASSET_A")
+            .copied()
+            .unwrap_or(0.0);
+        // qty = 1000 * 0.08 = 80, proceeds=4, fee=0.004, pnl=(0.05-0.02)*80 - 0.004 = 2.396
+        let expected = (0.05 - 0.02) * 80.0 - 0.004;
+        assert!(
+            (pnl - expected).abs() < 1e-6,
+            "got {}, expected {}",
+            pnl,
+            expected
+        );
+        assert_eq!(summary.total_realized_pnl, wallet.cumulative_pnl);
+    }
+
+    #[test]
+    fn test_summary_and_win_rate() {
+        let mut wallet = GhostWallet::new();
+        // sequence: loss then win on ASSET_A (fraction 0.08, but use direct for simplicity)
+        wallet.balances.insert("ASSET_A".to_string(), 1_000.0);
+        wallet.entry_prices.insert("ASSET_A".to_string(), 0.02);
+        execute_sell(&mut wallet, "ASSET_A", 0.01, 1, "loss", None); // loss
+        wallet.balances.insert("ASSET_A".to_string(), 1_000.0);
+        wallet.entry_prices.insert("ASSET_A".to_string(), 0.02);
+        execute_sell(&mut wallet, "ASSET_A", 0.05, 2, "win", None); // win
+        let summary = wallet.summary();
+        assert_eq!(summary.trade_count, 2);
+        assert!(summary.win_rate.is_some());
+        let wr = summary.win_rate.unwrap();
+        assert!((wr - 0.5).abs() < 1e-6, "win rate {}", wr);
+        assert!(summary.realized_pnl_per_asset.contains_key("ASSET_A"));
     }
 }

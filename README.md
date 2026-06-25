@@ -23,8 +23,11 @@ logged to JSONL for SNN training data and post-hoc analysis.
 - `CELLULAR_ATP = 500.0` — initial energy budget (quote-unit equivalent)
 - `ENERGY_COMMITMENT = 0.08` — 8% of available energy per signal
 - `METABOLIC_COST = 0.001` — 0.1% friction per action
-- `GhostTradeLog` — JSONL audit trail with timestamp, asset, side, price, units, reason
+- `GhostTradeLog` — JSONL audit trail with timestamp, asset, action, price, quantity, reason, per-trade realized_pnl_usdt
+- `PortfolioSummary` / `GhostWallet::summary()` — centralized realized PnL *per asset*, total, win-rate, trade counts (for #3)
+- Per-asset realized PnL tracking in `GhostWallet.realized_pnls`
 - Kelly fraction auto-update after 10+ trades based on realized win rate
+- `win_rate()` and `summary()` for accounting (computable from trade logs too)
 
 ## Review note
 This branch contains the Wallet/MarketPrices refactor to dynamic asset maps.
@@ -68,7 +71,7 @@ println!("ASSET_A units: {:.2}", wallet.balance("ASSET_A"));
 
 ```rust
 execute_buy(&mut wallet, "ASSET_A", 65.0, 1, "snn_fire", Some("trades.jsonl"));
-// Appends: {"ts":"2024-...","asset":"ASSET_A","side":"BUY","price":65.0,...}
+// Appends: {"ts":"2024-...","asset":"ASSET_A","action":"buy","price":65.0,"quantity":...,...}
 ```
 
 ## Energy Model

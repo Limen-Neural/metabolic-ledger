@@ -1,0 +1,79 @@
+name: Docker Build & Push
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      # Determine Docker Hub login eligibility at runtime (no secrets. in any if: expression to satisfy CR/zizmor scanners; secrets passed via env: and referenced as $VAR in shell to avoid direct interpolation risk per Devin).
+      - name: Check Docker Hub credentials available
+        id: dockerhub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ] && [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
+            echo "do_login=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "do_login=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Demo: login to Docker Hub using GH secrets (added per request); real values needed in repo settings.
+      # Gated via runtime check (addresses prior CR non-blocking + new secrets-in-if: findings).
+      - name: Login to Docker Hub (using GH secrets)
+        if: steps.dockerhub.outputs.do_login == 'true'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Login only on main (for push); on PR just build/test
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ghcr.io/limen-neural/metabolic-ledger
+          tags: |
+            type=sha
+            type=ref,event=branch
+
+      - name: Build and push (push only on main)
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # FEATURES build arg passed to Dockerfile (comment outside block scalar so not included in value)
+          build-args: |
+            FEATURES=sentry
