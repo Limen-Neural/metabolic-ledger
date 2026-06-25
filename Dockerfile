@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests first for better caching
-COPY Cargo.toml Cargo.lock* ./ 2>/dev/null || true
+COPY Cargo.toml Cargo.lock* ./
 # For lib, we can cargo fetch or just copy src
 COPY src ./src
 
