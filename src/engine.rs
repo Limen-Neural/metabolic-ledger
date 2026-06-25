@@ -209,5 +209,10 @@ mod tests {
         let wr = summary.win_rate.unwrap();
         assert!((wr - 0.5).abs() < 1e-6, "win rate {}", wr);
         assert!(summary.realized_pnl_per_asset.contains_key("ASSET_A"));
+        assert!(
+            (summary.current_kelly_fraction - 0.08).abs() < 1e-6,
+            "kelly {}",
+            summary.current_kelly_fraction
+        );
     }
 }
