@@ -8,12 +8,12 @@ WORKDIR /usr/src/metabolic-ledger
 
 # System deps for native crates (openssl, sentry etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    "pkg-config=1.8.1-1" \
+    "pkg-config=1.8.1*" \
     "libssl-dev=3.0.*" \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests first for better caching
-COPY Cargo.toml Cargo.lock* ./
+COPY Cargo.toml Cargo.lock* ./ 2>/dev/null || true
 # For lib, we can cargo fetch or just copy src
 COPY src ./src
 
