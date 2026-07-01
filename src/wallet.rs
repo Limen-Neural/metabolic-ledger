@@ -23,6 +23,10 @@ impl MarketPrices {
     }
 }
 
+fn default_kelly_fraction() -> f32 {
+    ENERGY_COMMITMENT
+}
+
 /// Canonical summary of persistent portfolio accounting (realized PnL per asset, win-rate, etc.).
 /// Exported as the single source of truth per issue #3 AC. Allows downstream (e.g. DendriteTrader.jl)
 /// to read canonical summaries without duplicating state.
@@ -43,6 +47,7 @@ pub struct PortfolioSummary {
     /// and is updated after ≥10 decisive trades in record_pnl_and_update_kelly.
     /// Exposed here so downstream consumers (e.g. DendriteTrader.jl) read the single source of truth
     /// without duplicating Kelly math.
+    #[serde(default = "default_kelly_fraction")]
     pub current_kelly_fraction: f32,
 }
 
