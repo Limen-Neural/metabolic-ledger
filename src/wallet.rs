@@ -23,6 +23,10 @@ impl MarketPrices {
     }
 }
 
+fn default_kelly_fraction() -> f32 {
+    ENERGY_COMMITMENT
+}
+
 /// Canonical summary of persistent portfolio accounting (realized PnL per asset, win-rate, etc.).
 /// Exported as the single source of truth per issue #3 AC. Allows downstream (e.g. DendriteTrader.jl)
 /// to read canonical summaries without duplicating state.
@@ -39,6 +43,12 @@ pub struct PortfolioSummary {
     pub trade_count: u64,
     /// Total closed trades (sells).
     pub closed_trade_count: u64,
+    /// Current adaptive Kelly fraction (position size). Always valid; defaults to ENERGY_COMMITMENT (0.08)
+    /// and is updated after ≥10 decisive trades in record_pnl_and_update_kelly.
+    /// Exposed here so downstream consumers (e.g. DendriteTrader.jl) read the single source of truth
+    /// without duplicating Kelly math.
+    #[serde(default = "default_kelly_fraction")]
+    pub current_kelly_fraction: f32,
 }
 
 /// Virtual ghost-trading wallet with biological ATP energy model.
@@ -199,6 +209,7 @@ impl GhostWallet {
             win_rate: self.win_rate(),
             trade_count: self.trade_count,
             closed_trade_count: self.closed_trade_count,
+            current_kelly_fraction: self.trade_fraction,
         }
     }
 }

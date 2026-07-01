@@ -24,7 +24,7 @@ logged to JSONL for SNN training data and post-hoc analysis.
 - `ENERGY_COMMITMENT = 0.08` — 8% of available energy per signal
 - `METABOLIC_COST = 0.001` — 0.1% friction per action
 - `GhostTradeLog` — JSONL audit trail with timestamp, asset, action, price, quantity, reason, per-trade realized_pnl_usdt
-- `PortfolioSummary` / `GhostWallet::summary()` — centralized realized PnL *per asset*, total, win-rate, trade counts (for #3)
+- `PortfolioSummary` / `GhostWallet::summary()` — centralized realized PnL *per asset*, total, win-rate, trade counts, **current_kelly_fraction** (for #4)
 - Per-asset realized PnL tracking in `GhostWallet.realized_pnls`
 - Kelly fraction auto-update after 10+ trades based on realized win rate
 - `win_rate()` and `summary()` for accounting (computable from trade logs too)
