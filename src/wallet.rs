@@ -230,9 +230,8 @@ impl GhostWallet {
         let full_kelly = (win_rate * b - q) / b;
         // Use operational (tighter) range for computed half-Kelly; defensive [KELLY_MIN, KELLY_MAX]
         // is used only by the kelly_fraction() getter as safety net (see consts above).
-        let half_kelly = (full_kelly * 0.5)
-            .clamp(KELLY_OPERATIONAL_MIN as f64, KELLY_OPERATIONAL_MAX as f64)
-            as f32;
+        let half_kelly =
+            (full_kelly * 0.5).clamp(KELLY_OPERATIONAL_MIN, KELLY_OPERATIONAL_MAX) as f32;
         self.trade_fraction = half_kelly;
     }
 
