@@ -254,9 +254,15 @@ mod tests {
         );
         // Boundary cases per inclusive range contract [0.01, 0.25]
         wallet.trade_fraction = 0.01;
-        assert!((wallet.kelly_fraction() - 0.01).abs() < 1e-6, "lower bound kelly");
+        assert!(
+            (wallet.kelly_fraction() - 0.01).abs() < 1e-6,
+            "lower bound kelly"
+        );
         wallet.trade_fraction = 0.25;
-        assert!((wallet.kelly_fraction() - 0.25).abs() < 1e-6, "upper bound kelly");
+        assert!(
+            (wallet.kelly_fraction() - 0.25).abs() < 1e-6,
+            "upper bound kelly"
+        );
         // valid mid value
         wallet.trade_fraction = ENERGY_COMMITMENT;
         assert!(
