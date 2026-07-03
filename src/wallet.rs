@@ -43,10 +43,11 @@ pub struct PortfolioSummary {
     pub trade_count: u64,
     /// Total closed trades (sells).
     pub closed_trade_count: u64,
-    /// Current adaptive Kelly fraction (position size). Always valid; defaults to ENERGY_COMMITMENT (0.08)
-    /// and is updated after ≥10 decisive trades in record_pnl_and_update_kelly.
-    /// Exposed here so downstream consumers (e.g. DendriteTrader.jl) read the single source of truth
-    /// without duplicating Kelly math.
+    /// Current adaptive Kelly fraction (position size). Always valid (sanitized to ENERGY_COMMITMENT
+    /// if invalid); defaults to ENERGY_COMMITMENT (0.08) and is updated after ≥10 decisive trades
+    /// in record_pnl_and_update_kelly. Use GhostWallet::kelly_fraction() or this field for the
+    /// canonical always-valid value. Exposed here so downstream consumers (e.g. DendriteTrader.jl)
+    /// read the single source of truth without duplicating Kelly math (see issue #12).
     #[serde(default = "default_kelly_fraction")]
     pub current_kelly_fraction: f32,
 }
@@ -79,7 +80,9 @@ pub struct GhostWallet {
     /// Total closed trades (including break-even), incremented on every sell.
     pub closed_trade_count: u64,
     /// Adaptive trade fraction, initialized to `ENERGY_COMMITMENT`.
-    pub trade_fraction: f32,
+    /// pub(crate) to prevent external mutation that could produce invalid values.
+    /// Consumers must use kelly_fraction() or summary().current_kelly_fraction (always valid).
+    pub(crate) trade_fraction: f32,
     pub price_history: VecDeque<f32>,
 }
 
@@ -199,6 +202,18 @@ impl GhostWallet {
         }
     }
 
+    /// Returns the current adaptive Kelly fraction (always valid).
+    /// Sanitizes to ENERGY_COMMITMENT if trade_fraction is non-finite or outside [0.01, 0.25].
+    /// This enforces the "always valid" contract (see issue #12).
+    pub fn kelly_fraction(&self) -> f32 {
+        let f = self.trade_fraction;
+        if f.is_finite() && (0.01..=0.25).contains(&f) {
+            f
+        } else {
+            ENERGY_COMMITMENT
+        }
+    }
+
     /// Returns a summary of realized PnL (per-asset + total), win-rate, etc.
     /// Satisfies AC for #3: centralizes accounting so consumers read from one place.
     /// Win-rate also computable from trade log by counting positive realized_pnl_usdt on sells.
@@ -209,7 +224,7 @@ impl GhostWallet {
             win_rate: self.win_rate(),
             trade_count: self.trade_count,
             closed_trade_count: self.closed_trade_count,
-            current_kelly_fraction: self.trade_fraction,
+            current_kelly_fraction: self.kelly_fraction(),
         }
     }
 }

@@ -215,4 +215,33 @@ mod tests {
             summary.current_kelly_fraction
         );
     }
+
+    #[test]
+    fn test_kelly_fraction_always_valid() {
+        let mut wallet = GhostWallet::new();
+        // Test sanitization for invalid values (enforces "always valid" per #12)
+        wallet.trade_fraction = f32::NAN;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "nan kelly"
+        );
+        wallet.trade_fraction = -0.1;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "neg kelly"
+        );
+        wallet.trade_fraction = 0.5;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "too large kelly"
+        );
+        wallet.trade_fraction = 0.08;
+        assert!((wallet.kelly_fraction() - 0.08).abs() < 1e-6, "valid kelly");
+        // summary must also expose valid value
+        let summary = wallet.summary();
+        assert!(
+            (summary.current_kelly_fraction - 0.08).abs() < 1e-6,
+            "summary kelly"
+        );
+    }
 }
