@@ -20,8 +20,9 @@ pub const METABOLIC_COST: f32 = 0.001;
 
 /// Execute a ghost buy order.
 ///
-/// Spends `wallet.trade_fraction * wallet.balance_atp` ATP after deducting
-/// the metabolic cost, then updates the weighted-average cost basis.
+/// Spends `wallet.kelly_fraction() * wallet.balance_atp` ATP (validated always-valid
+/// fraction) after deducting the metabolic cost, then updates the weighted-average
+/// cost basis.
 pub fn execute_buy(
     wallet: &mut GhostWallet,
     asset: &str,
@@ -30,7 +31,7 @@ pub fn execute_buy(
     reason: &str,
     log_path: Option<&str>,
 ) {
-    let spend_usdt = wallet.balance_atp * wallet.trade_fraction;
+    let spend_usdt = wallet.balance_atp * wallet.kelly_fraction();
     if spend_usdt < 0.01 {
         return;
     }
@@ -69,7 +70,8 @@ pub fn execute_buy(
 
 /// Execute a ghost sell order.
 ///
-/// Sells `wallet.trade_fraction * balance[asset]` units, deducting metabolic cost.
+/// Sells `wallet.kelly_fraction() * balance[asset]` units (validated always-valid
+/// fraction), deducting metabolic cost.
 pub fn execute_sell(
     wallet: &mut GhostWallet,
     asset: &str,
@@ -78,7 +80,7 @@ pub fn execute_sell(
     reason: &str,
     log_path: Option<&str>,
 ) {
-    let qty = wallet.balance(asset) * wallet.trade_fraction;
+    let qty = wallet.balance(asset) * wallet.kelly_fraction();
     if qty < 1e-9 {
         return;
     }
@@ -210,9 +212,90 @@ mod tests {
         assert!((wr - 0.5).abs() < 1e-6, "win rate {}", wr);
         assert!(summary.realized_pnl_per_asset.contains_key("ASSET_A"));
         assert!(
-            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
+            (summary.current_kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "kelly {}",
-            summary.current_kelly_fraction
+            summary.current_kelly_fraction()
+        );
+    }
+
+    #[test]
+    fn test_kelly_sanitizes_invalids() {
+        // Covers NaN, +/-inf, negative, and out-of-range (per #12 always-valid contract)
+        let mut wallet = GhostWallet::new();
+        wallet.trade_fraction = f32::NAN;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "nan kelly"
+        );
+        wallet.trade_fraction = f32::INFINITY;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "inf kelly"
+        );
+        wallet.trade_fraction = f32::NEG_INFINITY;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "neg-inf kelly"
+        );
+        wallet.trade_fraction = -0.1;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "neg kelly"
+        );
+        wallet.trade_fraction = 0.5;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "too large kelly"
+        );
+        wallet.trade_fraction = 2.0;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "way too large kelly"
+        );
+    }
+
+    #[test]
+    fn test_kelly_boundaries() {
+        // Exact inclusive [0.01, 0.25] per contract (and CodeRabbit suggestion)
+        let mut wallet = GhostWallet::new();
+        wallet.trade_fraction = 0.01;
+        assert!(
+            (wallet.kelly_fraction() - 0.01).abs() < 1e-6,
+            "lower bound kelly"
+        );
+        wallet.trade_fraction = 0.25;
+        assert!(
+            (wallet.kelly_fraction() - 0.25).abs() < 1e-6,
+            "upper bound kelly"
+        );
+    }
+
+    #[test]
+    fn test_kelly_valid_and_summary() {
+        // Valid value passes through; summary() also uses the sanitized value
+        let mut wallet = GhostWallet::new();
+        wallet.trade_fraction = ENERGY_COMMITMENT;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "valid kelly"
+        );
+        let summary = wallet.summary();
+        assert!(
+            (summary.current_kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "summary kelly"
+        );
+    }
+
+    #[test]
+    fn test_execute_uses_sanitized_kelly_fraction() {
+        let mut wallet = GhostWallet::new();
+        wallet.trade_fraction = f32::NAN;
+        let before = wallet.balance_atp;
+        execute_buy(&mut wallet, "ASSET_A", 1.0, 1, "test", None);
+        let expected_spend = before * ENERGY_COMMITMENT;
+        assert!(
+            (before - wallet.balance_atp - expected_spend).abs() < 1e-4,
+            "buy should use sanitized kelly fraction"
         );
     }
 }
