@@ -7,7 +7,7 @@
 //! Ghost wallet — multi-asset virtual portfolio with Kelly position sizing.
 
 use crate::engine::{CELLULAR_ATP, ENERGY_COMMITMENT};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::{HashMap, VecDeque};
 
 /// Current market prices for all supported assets (USD).
@@ -41,6 +41,23 @@ const KELLY_MAX: f32 = 0.25;
 const KELLY_OPERATIONAL_MIN: f64 = 0.02;
 const KELLY_OPERATIONAL_MAX: f64 = 0.20;
 
+/// Sanitize a Kelly fraction to the always-valid contract (finite and within bounds).
+fn sanitize_kelly_fraction(f: f32) -> f32 {
+    if f.is_finite() && (KELLY_MIN..=KELLY_MAX).contains(&f) {
+        f
+    } else {
+        ENERGY_COMMITMENT
+    }
+}
+
+fn deserialize_kelly_fraction<'de, D>(deserializer: D) -> Result<f32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let f = f32::deserialize(deserializer)?;
+    Ok(sanitize_kelly_fraction(f))
+}
+
 /// Canonical summary of persistent portfolio accounting (realized PnL per asset, win-rate, etc.).
 /// Exported as the single source of truth per issue #3 AC. Allows downstream (e.g. DendriteTrader.jl)
 /// to read canonical summaries without duplicating state.
@@ -64,11 +81,10 @@ pub struct PortfolioSummary {
     /// [KELLY_MIN, KELLY_MAX]. Defaults to ENERGY_COMMITMENT (0.08) and is updated after
     /// ≥10 decisive trades in `record_pnl_and_update_kelly`.
     ///
-    /// Direct construction, manual mutation, or deserialization of `PortfolioSummary`
-    /// can hold arbitrary f32 values (the serde default only applies for missing fields).
+    /// Deserialization also sanitizes invalid values via `deserialize_kelly_fraction`.
     /// Prefer `GhostWallet::kelly_fraction()` / `summary()` for the guaranteed-valid value.
     /// Exposed for downstream (e.g. DendriteTrader.jl) as single source of truth (see #12).
-    #[serde(default = "default_kelly_fraction")]
+    #[serde(default = "default_kelly_fraction", deserialize_with = "deserialize_kelly_fraction")]
     pub current_kelly_fraction: f32,
 }
 
@@ -211,8 +227,8 @@ impl GhostWallet {
         let full_kelly = (win_rate * b - q) / b;
         // Use operational (tighter) range for computed half-Kelly; defensive [KELLY_MIN, KELLY_MAX]
         // is used only by the kelly_fraction() getter as safety net (see consts above).
-        let half_kelly =
-            (full_kelly * 0.5).clamp(KELLY_OPERATIONAL_MIN, KELLY_OPERATIONAL_MAX) as f32;
+        let half_kelly = (full_kelly * 0.5)
+            .clamp(KELLY_OPERATIONAL_MIN as f64, KELLY_OPERATIONAL_MAX as f64) as f32;
         self.trade_fraction = half_kelly;
     }
 
@@ -229,12 +245,7 @@ impl GhostWallet {
     /// Sanitizes to ENERGY_COMMITMENT if trade_fraction is non-finite or outside [KELLY_MIN, KELLY_MAX].
     /// This enforces the "always valid" contract (see issue #12).
     pub fn kelly_fraction(&self) -> f32 {
-        let f = self.trade_fraction;
-        if f.is_finite() && (KELLY_MIN..=KELLY_MAX).contains(&f) {
-            f
-        } else {
-            ENERGY_COMMITMENT
-        }
+        sanitize_kelly_fraction(self.trade_fraction)
     }
 
     /// Returns a summary of realized PnL (per-asset + total), win-rate, etc.
@@ -255,5 +266,34 @@ impl GhostWallet {
 impl Default for GhostWallet {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_portfolio_summary_deserialize_sanitizes_kelly() {
+        let json_missing = r#"{"total_realized_pnl":0.0,"realized_pnl_per_asset":{},"win_rate":null,"trade_count":0,"closed_trade_count":0}"#;
+        let summary: PortfolioSummary = serde_json::from_str(json_missing).unwrap();
+        assert!(
+            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
+            "missing field defaults to ENERGY_COMMITMENT"
+        );
+
+        let json_negative = r#"{"total_realized_pnl":0.0,"realized_pnl_per_asset":{},"win_rate":null,"trade_count":0,"closed_trade_count":0,"current_kelly_fraction":-0.5}"#;
+        let summary: PortfolioSummary = serde_json::from_str(json_negative).unwrap();
+        assert!(
+            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
+            "negative kelly should sanitize"
+        );
+
+        let json_out_of_range = r#"{"total_realized_pnl":0.0,"realized_pnl_per_asset":{},"win_rate":null,"trade_count":0,"closed_trade_count":0,"current_kelly_fraction":0.99}"#;
+        let summary: PortfolioSummary = serde_json::from_str(json_out_of_range).unwrap();
+        assert!(
+            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
+            "out-of-range kelly should sanitize"
+        );
     }
 }

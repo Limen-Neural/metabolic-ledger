@@ -276,4 +276,17 @@ mod tests {
             "summary kelly"
         );
     }
+
+    #[test]
+    fn test_execute_uses_sanitized_kelly_fraction() {
+        let mut wallet = GhostWallet::new();
+        wallet.trade_fraction = f32::NAN;
+        let before = wallet.balance_atp;
+        execute_buy(&mut wallet, "ASSET_A", 1.0, 1, "test", None);
+        let expected_spend = before * ENERGY_COMMITMENT;
+        assert!(
+            (before - wallet.balance_atp - expected_spend).abs() < 1e-4,
+            "buy should use sanitized kelly fraction"
+        );
+    }
 }
