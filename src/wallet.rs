@@ -168,7 +168,7 @@ pub struct GhostWallet {
     pub closed_trade_count: u64,
     /// Adaptive trade fraction, initialized to `ENERGY_COMMITMENT`.
     /// pub(crate) to prevent external mutation that could produce invalid values.
-    /// Consumers must use kelly_fraction() or summary().current_kelly_fraction (always valid).
+    /// Consumers must use kelly_fraction() or summary().current_kelly_fraction() (always valid).
     pub(crate) trade_fraction: f32,
     pub price_history: VecDeque<f32>,
 }
@@ -331,21 +331,21 @@ mod tests {
         let json_missing = r#"{"total_realized_pnl":0.0,"realized_pnl_per_asset":{},"win_rate":null,"trade_count":0,"closed_trade_count":0}"#;
         let summary: PortfolioSummary = serde_json::from_str(json_missing).unwrap();
         assert!(
-            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
+            (summary.current_kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "missing field defaults to ENERGY_COMMITMENT"
         );
 
         let json_negative = r#"{"total_realized_pnl":0.0,"realized_pnl_per_asset":{},"win_rate":null,"trade_count":0,"closed_trade_count":0,"current_kelly_fraction":-0.5}"#;
         let summary: PortfolioSummary = serde_json::from_str(json_negative).unwrap();
         assert!(
-            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
+            (summary.current_kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "negative kelly should sanitize"
         );
 
         let json_out_of_range = r#"{"total_realized_pnl":0.0,"realized_pnl_per_asset":{},"win_rate":null,"trade_count":0,"closed_trade_count":0,"current_kelly_fraction":0.99}"#;
         let summary: PortfolioSummary = serde_json::from_str(json_out_of_range).unwrap();
         assert!(
-            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
+            (summary.current_kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "out-of-range kelly should sanitize"
         );
     }
