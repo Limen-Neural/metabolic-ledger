@@ -37,8 +37,9 @@ const KELLY_MAX: f32 = 0.25;
 
 /// Operational half-Kelly clamp range (used in record_pnl_and_update_kelly).
 /// Separate from defensive KELLY_MIN/MAX per design (addresses consistency feedback).
-const KELLY_OPERATIONAL_MIN: f32 = 0.02;
-const KELLY_OPERATIONAL_MAX: f32 = 0.20;
+/// f64 because used in f64 Kelly math before final cast to f32.
+const KELLY_OPERATIONAL_MIN: f64 = 0.02;
+const KELLY_OPERATIONAL_MAX: f64 = 0.20;
 
 /// Canonical summary of persistent portfolio accounting (realized PnL per asset, win-rate, etc.).
 /// Exported as the single source of truth per issue #3 AC. Allows downstream (e.g. DendriteTrader.jl)
