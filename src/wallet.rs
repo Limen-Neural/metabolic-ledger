@@ -84,7 +84,10 @@ pub struct PortfolioSummary {
     /// Deserialization also sanitizes invalid values via `deserialize_kelly_fraction`.
     /// Prefer `GhostWallet::kelly_fraction()` / `summary()` for the guaranteed-valid value.
     /// Exposed for downstream (e.g. DendriteTrader.jl) as single source of truth (see #12).
-    #[serde(default = "default_kelly_fraction", deserialize_with = "deserialize_kelly_fraction")]
+    #[serde(
+        default = "default_kelly_fraction",
+        deserialize_with = "deserialize_kelly_fraction"
+    )]
     pub current_kelly_fraction: f32,
 }
 
@@ -228,7 +231,8 @@ impl GhostWallet {
         // Use operational (tighter) range for computed half-Kelly; defensive [KELLY_MIN, KELLY_MAX]
         // is used only by the kelly_fraction() getter as safety net (see consts above).
         let half_kelly = (full_kelly * 0.5)
-            .clamp(KELLY_OPERATIONAL_MIN as f64, KELLY_OPERATIONAL_MAX as f64) as f32;
+            .clamp(KELLY_OPERATIONAL_MIN as f64, KELLY_OPERATIONAL_MAX as f64)
+            as f32;
         self.trade_fraction = half_kelly;
     }
 
