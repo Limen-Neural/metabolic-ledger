@@ -227,6 +227,16 @@ mod tests {
             (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "nan kelly"
         );
+        wallet.trade_fraction = f32::INFINITY;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "inf kelly"
+        );
+        wallet.trade_fraction = f32::NEG_INFINITY;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "neg-inf kelly"
+        );
         wallet.trade_fraction = -0.1;
         assert!(
             (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
@@ -237,12 +247,26 @@ mod tests {
             (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "too large kelly"
         );
-        wallet.trade_fraction = 0.08;
-        assert!((wallet.kelly_fraction() - 0.08).abs() < 1e-6, "valid kelly");
+        wallet.trade_fraction = 2.0;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "way too large kelly"
+        );
+        // Boundary cases per inclusive range contract [0.01, 0.25]
+        wallet.trade_fraction = 0.01;
+        assert!((wallet.kelly_fraction() - 0.01).abs() < 1e-6, "lower bound kelly");
+        wallet.trade_fraction = 0.25;
+        assert!((wallet.kelly_fraction() - 0.25).abs() < 1e-6, "upper bound kelly");
+        // valid mid value
+        wallet.trade_fraction = ENERGY_COMMITMENT;
+        assert!(
+            (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
+            "valid kelly"
+        );
         // summary must also expose valid value
         let summary = wallet.summary();
         assert!(
-            (summary.current_kelly_fraction - 0.08).abs() < 1e-6,
+            (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
             "summary kelly"
         );
     }
