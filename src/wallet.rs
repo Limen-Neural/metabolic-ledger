@@ -27,6 +27,19 @@ fn default_kelly_fraction() -> f32 {
     ENERGY_COMMITMENT
 }
 
+/// Kelly fraction bounds for the always-valid contract (issue #12).
+/// Getter `kelly_fraction()` sanitizes to ENERGY_COMMITMENT outside this (defensive).
+/// The update logic in `record_pnl_and_update_kelly` uses a tighter operational range
+/// for half-Kelly (see below) — this is intentional (wider getter = safety net for
+/// any direct internal sets; tighter clamp = conservative updates from real data).
+const KELLY_MIN: f32 = 0.01;
+const KELLY_MAX: f32 = 0.25;
+
+/// Operational half-Kelly clamp range (used in record_pnl_and_update_kelly).
+/// Separate from defensive KELLY_MIN/MAX per design (addresses consistency feedback).
+const KELLY_OPERATIONAL_MIN: f32 = 0.02;
+const KELLY_OPERATIONAL_MAX: f32 = 0.20;
+
 /// Canonical summary of persistent portfolio accounting (realized PnL per asset, win-rate, etc.).
 /// Exported as the single source of truth per issue #3 AC. Allows downstream (e.g. DendriteTrader.jl)
 /// to read canonical summaries without duplicating state.
@@ -43,11 +56,17 @@ pub struct PortfolioSummary {
     pub trade_count: u64,
     /// Total closed trades (sells).
     pub closed_trade_count: u64,
-    /// Current adaptive Kelly fraction (position size). Always valid (sanitized to ENERGY_COMMITMENT
-    /// if invalid); defaults to ENERGY_COMMITMENT (0.08) and is updated after ≥10 decisive trades
-    /// in record_pnl_and_update_kelly. Use GhostWallet::kelly_fraction() or this field for the
-    /// canonical always-valid value. Exposed here so downstream consumers (e.g. DendriteTrader.jl)
-    /// read the single source of truth without duplicating Kelly math (see issue #12).
+    /// Current adaptive Kelly fraction (position size).
+    ///
+    /// **Always valid when produced by `GhostWallet::summary()`** (or `kelly_fraction()`):
+    /// sanitized to `ENERGY_COMMITMENT` if the internal value is non-finite or outside
+    /// [KELLY_MIN, KELLY_MAX]. Defaults to ENERGY_COMMITMENT (0.08) and is updated after
+    /// ≥10 decisive trades in `record_pnl_and_update_kelly`.
+    ///
+    /// Direct construction, manual mutation, or deserialization of `PortfolioSummary`
+    /// can hold arbitrary f32 values (the serde default only applies for missing fields).
+    /// Prefer `GhostWallet::kelly_fraction()` / `summary()` for the guaranteed-valid value.
+    /// Exposed for downstream (e.g. DendriteTrader.jl) as single source of truth (see #12).
     #[serde(default = "default_kelly_fraction")]
     pub current_kelly_fraction: f32,
 }
@@ -189,7 +208,9 @@ impl GhostWallet {
         let b = avg_win / avg_loss;
         let q = 1.0 - win_rate;
         let full_kelly = (win_rate * b - q) / b;
-        let half_kelly = (full_kelly * 0.5).clamp(0.02, 0.20) as f32;
+        // Use operational (tighter) range for computed half-Kelly; defensive [KELLY_MIN, KELLY_MAX]
+        // is used only by the kelly_fraction() getter as safety net (see consts above).
+        let half_kelly = (full_kelly * 0.5).clamp(KELLY_OPERATIONAL_MIN, KELLY_OPERATIONAL_MAX) as f32;
         self.trade_fraction = half_kelly;
     }
 
@@ -203,11 +224,11 @@ impl GhostWallet {
     }
 
     /// Returns the current adaptive Kelly fraction (always valid).
-    /// Sanitizes to ENERGY_COMMITMENT if trade_fraction is non-finite or outside [0.01, 0.25].
+    /// Sanitizes to ENERGY_COMMITMENT if trade_fraction is non-finite or outside [KELLY_MIN, KELLY_MAX].
     /// This enforces the "always valid" contract (see issue #12).
     pub fn kelly_fraction(&self) -> f32 {
         let f = self.trade_fraction;
-        if f.is_finite() && (0.01..=0.25).contains(&f) {
+        if f.is_finite() && (KELLY_MIN..=KELLY_MAX).contains(&f) {
             f
         } else {
             ENERGY_COMMITMENT
