@@ -24,7 +24,12 @@ impl MarketPrices {
 }
 
 fn default_kelly_fraction() -> f32 {
-    ENERGY_COMMITMENT
+    let val = sanitize_kelly_fraction(ENERGY_COMMITMENT);
+    debug_assert!(
+        val.is_finite() && (KELLY_MIN..=KELLY_MAX).contains(&val),
+        "default_kelly_fraction must return a value within the always-valid bounds [KELLY_MIN, KELLY_MAX]"
+    );
+    val
 }
 
 /// Kelly fraction bounds for the always-valid contract (issue #12).
