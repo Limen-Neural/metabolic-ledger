@@ -7,7 +7,7 @@
 //! Ghost wallet — multi-asset virtual portfolio with Kelly position sizing.
 
 use crate::engine::{CELLULAR_ATP, ENERGY_COMMITMENT};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{HashMap, VecDeque};
 
 /// Current market prices for all supported assets (USD).
@@ -58,6 +58,14 @@ where
     Ok(sanitize_kelly_fraction(f))
 }
 
+fn serialize_kelly_fraction<S>(value: &f32, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let sanitized = sanitize_kelly_fraction(*value);
+    sanitized.serialize(serializer)
+}
+
 /// Canonical summary of persistent portfolio accounting (realized PnL per asset, win-rate, etc.).
 /// Exported as the single source of truth per issue #3 AC. Allows downstream (e.g. DendriteTrader.jl)
 /// to read canonical summaries without duplicating state.
@@ -81,12 +89,15 @@ pub struct PortfolioSummary {
     /// [KELLY_MIN, KELLY_MAX]. Defaults to ENERGY_COMMITMENT (0.08) and is updated after
     /// ≥10 decisive trades in `record_pnl_and_update_kelly`.
     ///
-    /// Deserialization also sanitizes invalid values via `deserialize_kelly_fraction`.
+    /// Deserialization and serialization both sanitize invalid values (via
+    /// `deserialize_kelly_fraction` / `serialize_kelly_fraction`) for defense-in-depth
+    /// against manual construction of out-of-range values (addresses review info note).
     /// Prefer `GhostWallet::kelly_fraction()` / `summary()` for the guaranteed-valid value.
     /// Exposed for downstream (e.g. DendriteTrader.jl) as single source of truth (see #12).
     #[serde(
         default = "default_kelly_fraction",
-        deserialize_with = "deserialize_kelly_fraction"
+        deserialize_with = "deserialize_kelly_fraction",
+        serialize_with = "serialize_kelly_fraction"
     )]
     pub current_kelly_fraction: f32,
 }
