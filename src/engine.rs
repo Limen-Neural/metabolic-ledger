@@ -20,8 +20,9 @@ pub const METABOLIC_COST: f32 = 0.001;
 
 /// Execute a ghost buy order.
 ///
-/// Spends `wallet.trade_fraction * wallet.balance_atp` ATP after deducting
-/// the metabolic cost, then updates the weighted-average cost basis.
+/// Spends `wallet.kelly_fraction() * wallet.balance_atp` ATP (validated always-valid
+/// fraction) after deducting the metabolic cost, then updates the weighted-average
+/// cost basis.
 pub fn execute_buy(
     wallet: &mut GhostWallet,
     asset: &str,
@@ -30,7 +31,7 @@ pub fn execute_buy(
     reason: &str,
     log_path: Option<&str>,
 ) {
-    let spend_usdt = wallet.balance_atp * wallet.trade_fraction;
+    let spend_usdt = wallet.balance_atp * wallet.kelly_fraction();
     if spend_usdt < 0.01 {
         return;
     }
@@ -69,7 +70,8 @@ pub fn execute_buy(
 
 /// Execute a ghost sell order.
 ///
-/// Sells `wallet.trade_fraction * balance[asset]` units, deducting metabolic cost.
+/// Sells `wallet.kelly_fraction() * balance[asset]` units (validated always-valid
+/// fraction), deducting metabolic cost.
 pub fn execute_sell(
     wallet: &mut GhostWallet,
     asset: &str,
@@ -78,7 +80,7 @@ pub fn execute_sell(
     reason: &str,
     log_path: Option<&str>,
 ) {
-    let qty = wallet.balance(asset) * wallet.trade_fraction;
+    let qty = wallet.balance(asset) * wallet.kelly_fraction();
     if qty < 1e-9 {
         return;
     }
