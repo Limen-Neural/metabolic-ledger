@@ -219,9 +219,9 @@ mod tests {
     }
 
     #[test]
-    fn test_kelly_fraction_always_valid() {
+    fn test_kelly_sanitizes_invalids() {
+        // Covers NaN, +/-inf, negative, and out-of-range (per #12 always-valid contract)
         let mut wallet = GhostWallet::new();
-        // Test sanitization for invalid values (enforces "always valid" per #12)
         wallet.trade_fraction = f32::NAN;
         assert!(
             (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
@@ -252,7 +252,12 @@ mod tests {
             (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "way too large kelly"
         );
-        // Boundary cases per inclusive range contract [0.01, 0.25]
+    }
+
+    #[test]
+    fn test_kelly_boundaries() {
+        // Exact inclusive [0.01, 0.25] per contract (and CodeRabbit suggestion)
+        let mut wallet = GhostWallet::new();
         wallet.trade_fraction = 0.01;
         assert!(
             (wallet.kelly_fraction() - 0.01).abs() < 1e-6,
@@ -263,13 +268,17 @@ mod tests {
             (wallet.kelly_fraction() - 0.25).abs() < 1e-6,
             "upper bound kelly"
         );
-        // valid mid value
+    }
+
+    #[test]
+    fn test_kelly_valid_and_summary() {
+        // Valid value passes through; summary() also uses the sanitized value
+        let mut wallet = GhostWallet::new();
         wallet.trade_fraction = ENERGY_COMMITMENT;
         assert!(
             (wallet.kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "valid kelly"
         );
-        // summary must also expose valid value
         let summary = wallet.summary();
         assert!(
             (summary.current_kelly_fraction - ENERGY_COMMITMENT).abs() < 1e-6,
