@@ -23,33 +23,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      # Determine Docker Hub login eligibility at runtime (no secrets. in any if: expression to satisfy CR/zizmor scanners; secrets passed via env: and referenced as $VAR in shell to avoid direct interpolation risk per Devin).
-      - name: Check Docker Hub credentials available
-        id: dockerhub
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          if [ "$EVENT_NAME" != "pull_request" ] && [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PASSWORD" ]; then
-            echo "do_login=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "do_login=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      # Demo: login to Docker Hub using GH secrets (added per request); real values needed in repo settings.
-      # Gated via runtime check (addresses prior CR non-blocking + new secrets-in-if: findings).
-      - name: Login to Docker Hub (using GH secrets)
-        if: steps.dockerhub.outputs.do_login == 'true'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      # Docker Hub login removed. It was a demo (per prior request) and is not used.
+      # No docker.io images configured in metadata/build-push
+      # (only ghcr.io/limen-neural/metabolic-ledger published on main).
+      # This prevents spurious auth failures when DOCKER_* secrets are
+      # present but invalid (common if using account password instead of
+      # PAT, or wrong values).
+      # GHCR login (using GITHUB_TOKEN + packages:write) remains and is the active
+      # registry.
+      # If Docker Hub publish wanted later:
+      # 1) set proper DOCKER_USERNAME + DOCKERHUB_TOKEN (PAT from
+      # hub.docker.com/settings/security with write scope),
+      # 2) add docker.io entry to images in metadata,
+      # 3) restore gated login.
+      # Cleanup by Grok Build agent in fix/remove-dockerhub-login-demo
+      # (memory protocol + pr-babysit style followed).
 
       # Login only on main (for push); on PR just build/test
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
