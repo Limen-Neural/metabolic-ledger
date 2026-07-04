@@ -15,10 +15,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-      # Temporary for Node 20 deprecation in some actions (incl. login-action);
-      # prefer updating action SHAs. Added by Grok Build agent.
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -46,8 +42,7 @@ jobs:
       # Login only on main (for push); on PR just build/test
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4
-        # v4 (Jul 2026, better Node support). Grok Build agent.
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
