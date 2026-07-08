@@ -8,7 +8,7 @@
 
 use crate::engine::{CELLULAR_ATP, ENERGY_COMMITMENT};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 /// Current market prices for all supported assets (USD).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -175,7 +175,6 @@ pub struct GhostWallet {
     /// pub(crate) to prevent external mutation that could produce invalid values.
     /// Consumers must use kelly_fraction() or summary().current_kelly_fraction() (always valid).
     pub(crate) trade_fraction: f32,
-    pub price_history: VecDeque<f32>,
 }
 
 impl GhostWallet {
@@ -194,7 +193,6 @@ impl GhostWallet {
             total_loss: 0.0,
             closed_trade_count: 0,
             trade_fraction: ENERGY_COMMITMENT,
-            price_history: VecDeque::with_capacity(50),
         }
     }
 
@@ -330,6 +328,7 @@ impl Default for GhostWallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_portfolio_summary_deserialize_sanitizes_kelly() {
@@ -353,5 +352,55 @@ mod tests {
             (summary.current_kelly_fraction() - ENERGY_COMMITMENT).abs() < 1e-6,
             "out-of-range kelly should sanitize"
         );
+    }
+
+    proptest! {
+        #[test]
+        fn prop_record_pnl_and_update_kelly(pnl in -1_000_000f32..1_000_000f32) {
+            let mut wallet = GhostWallet::new();
+            wallet.record_pnl_and_update_kelly(pnl);
+            let kelly = wallet.kelly_fraction();
+            prop_assert!((KELLY_MIN..=KELLY_MAX).contains(&kelly));
+        }
+
+        #[test]
+        fn prop_win_rate_matches_manual_count(
+            wins in 0..100u64,
+            losses in 0..100u64,
+            break_even in 0..100u64,
+        ) {
+            let mut wallet = GhostWallet::new();
+            wallet.win_count = wins;
+            wallet.loss_count = losses;
+            wallet.closed_trade_count = wins + losses + break_even;
+            let expected = if wallet.closed_trade_count == 0 {
+                None
+            } else {
+                Some(wins as f64 / wallet.closed_trade_count as f64)
+            };
+            prop_assert_eq!(wallet.win_rate(), expected);
+        }
+
+        #[test]
+        fn prop_summary_consistent(
+            realized in prop::collection::hash_map(
+                "[A-Z]{1,4}",
+                -1_000_000f32..1_000_000f32,
+                0..10,
+            ),
+            trade_count in 0..1_000u64,
+            closed_trade_count in 0..1_000u64,
+        ) {
+            let mut wallet = GhostWallet::new();
+            wallet.realized_pnls = realized.clone();
+            wallet.trade_count = trade_count;
+            wallet.closed_trade_count = closed_trade_count;
+            let summary = wallet.summary();
+            prop_assert!((summary.total_realized_pnl - realized.values().sum::<f32>()).abs() < 1e-3);
+            prop_assert_eq!(&summary.realized_pnl_per_asset, &realized);
+            prop_assert_eq!(summary.trade_count, trade_count);
+            prop_assert_eq!(summary.closed_trade_count, closed_trade_count);
+            prop_assert_eq!(summary.current_kelly_fraction(), wallet.kelly_fraction());
+        }
     }
 }
