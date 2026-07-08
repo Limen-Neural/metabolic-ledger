@@ -356,11 +356,26 @@ mod tests {
 
     proptest! {
         #[test]
-        fn prop_record_pnl_and_update_kelly(pnl in -1_000_000f32..1_000_000f32) {
+        fn prop_record_pnl_and_update_kelly(
+            pnls in prop::collection::vec(
+                (-1_000_000f32..1_000_000f32).prop_filter("non-zero pnl", |x| x.abs() > 1e-3),
+                12..20,
+            ),
+        ) {
             let mut wallet = GhostWallet::new();
-            wallet.record_pnl_and_update_kelly(pnl);
+            for pnl in &pnls {
+                wallet.record_pnl_and_update_kelly(*pnl);
+            }
             let kelly = wallet.kelly_fraction();
             prop_assert!((KELLY_MIN..=KELLY_MAX).contains(&kelly));
+            // With >=10 decisive non-zero trades the operational update path is exercised.
+            let decisive = wallet.win_count + wallet.loss_count;
+            if decisive >= 10 {
+                prop_assert!(
+                    (KELLY_OPERATIONAL_MIN as f32..=KELLY_OPERATIONAL_MAX as f32)
+                        .contains(&kelly)
+                );
+            }
         }
 
         #[test]
@@ -396,7 +411,8 @@ mod tests {
             wallet.trade_count = trade_count;
             wallet.closed_trade_count = closed_trade_count;
             let summary = wallet.summary();
-            prop_assert!((summary.total_realized_pnl - realized.values().sum::<f32>()).abs() < 1e-3);
+            let expected_total: f32 = wallet.realized_pnls.values().sum();
+            prop_assert!((summary.total_realized_pnl - expected_total).abs() < 1e-3);
             prop_assert_eq!(&summary.realized_pnl_per_asset, &realized);
             prop_assert_eq!(summary.trade_count, trade_count);
             prop_assert_eq!(summary.closed_trade_count, closed_trade_count);
