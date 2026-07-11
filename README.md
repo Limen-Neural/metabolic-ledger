@@ -68,6 +68,42 @@ println!("Portfolio: {:.2}", wallet.portfolio_value(&prices));
 println!("ASSET_A units: {:.2}", wallet.balance("ASSET_A"));
 ```
 
+## Accounting & Kelly state (for downstream)
+
+`PortfolioSummary` is the canonical read-only snapshot of realized accounting. It is safe to serialize/deserialize and always keeps `current_kelly_fraction` inside the valid contract.
+
+```rust
+use metabolic_ledger::GhostWallet;
+
+let mut wallet = GhostWallet::new();
+// ... run trades ...
+
+let s = wallet.summary();
+println!("total pnl: {}", s.total_realized_pnl);
+println!("kelly now: {}", s.current_kelly_fraction());
+
+// Per-asset breakdown
+for (asset, pnl) in &s.realized_pnl_per_asset {
+    println!("{}: {}", asset, pnl);
+}
+```
+
+> **Round-trip note:** `total_realized_pnl` equals the sum of `realized_pnl_per_asset`. The same totals can be recomputed from a `GhostTradeLog` JSONL stream by summing `realized_pnl_usdt` on rows where `action == "sell"`.
+
+### Deserialize a saved `PortfolioSummary`
+
+```rust
+let json = r#"{
+    "total_realized_pnl": 12.34,
+    "realized_pnl_per_asset": {"ASSET_A": 12.34},
+    "win_rate": 0.6,
+    "trade_count": 10,
+    "closed_trade_count": 5,
+    "current_kelly_fraction": 0.08
+}"#;
+let summary: metabolic_ledger::PortfolioSummary = serde_json::from_str(json).unwrap();
+```
+
 ## With JSONL Audit Log
 
 ```rust
